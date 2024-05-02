@@ -7,7 +7,15 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Middelware
-app.use(cors());
+app.use(cors(
+    {
+        origin: [
+            "http://localhost:5173",
+            "https://coffee-store-server-livid-phi.vercel.app",
+            "https://coffee-store-84dbb.web.app"
+        ]
+    }
+));
 app.use(express.json());
 
 // nYLhyx23WZXueHtD
@@ -27,15 +35,17 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         const coffeeCollection = client.db('coffeDB').collection('coffee')
+        const userCollection = client.db('coffeDB').collection('user')
 
         app.get('/coffee', async (req, res) => {
             const cursor = coffeeCollection.find();
             const result = await cursor.toArray();
             res.send(result);
         })
+
         app.put('/coffee/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
@@ -71,6 +81,8 @@ async function run() {
             res.send(result);
         })
 
+
+
         app.delete('/coffee/:id', async (req, res) => {
             const id = req.params.id;
             const queary = { _id: new ObjectId(id) };
@@ -78,8 +90,42 @@ async function run() {
             res.send(result);
         })
 
+        // USer releted api
+        app.get('/user', async (req, res) => {
+            const cursor = userCollection.find();
+            const users = await cursor.toArray();
+            res.send(users);
+        })
+
+        app.post('/user', async (req, res) => {
+            const user = req.body;
+            console.log('New USer: ', user);
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        })
+
+        app.patch('/user', async (req, res) => {
+            const user = req.body
+            const filter = { email: user.email };
+            const updatedDoc = {
+                $set: {
+                    lastLoginAt: user.lastLoginAt
+                }
+            }
+            const result = await userCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+
+        app.delete('/user/:id', async (req, res) => {
+            const id = req.params.id;
+            const queary = { _id: new ObjectId(id) };
+            const result = await userCollection.deleteOne(queary);
+            res.send(result);
+        })
+
+
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
+        // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
